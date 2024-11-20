@@ -1,0 +1,367 @@
+
+#' Generalized Renyi Transform
+#'
+#' A Generalization of Aldous Renyi's representation of exponential order statistics
+#'
+#' Maps a vector of shifted and scaled independent exponential random variables to a sequence of standard independent exponential random variables based on the gaps (jumps) between the initial random variables
+#'
+#' @references
+#' Christ, R., Hall, I. and Steinsaltz, D.  (2024) "The Renyi Outlier Test", arXiv Available at: \doi{}.
+#'
+#' @param x a vector of independent exponential random variables of the form \eqn{X_j = a_j Y_j + b_j} where each \eqn{Y_j} is an independent exponential random variable with rate 1
+#' @param a vector of scale parameters implicit in the construction of \code{x}: \code{a[j]} = \eqn{a_j}
+#' @param b vector of shift parameters implicit in the construction of \code{x}: \code{b[j]} = \eqn{b_j}
+#' @return a list containing two elements
+#' \describe{
+#'   \item{`exps`}{a vector of independent standard exponentials where \code{exps[1]} is the exponential jump corresponding to \code{min(x)} and \code{tail(exps,1)} is the exponential jump corresponding to \code{max(x)}.}
+#'   \item{`order`}{\code{order(x)}.}
+#' }
+#' @examples
+#' # example code
+#'
+#' a <- rchisq(10,1)
+#' b <- rnorm(10)
+#' xx <- a*rexp(10)+b
+#' generalized_renyi_transform(xx, a, b)
+#' @export
+generalized_renyi_transform <- function(x, a = NULL, b = NULL){
+  # maps independent exponentials of the form aY + b where each Y_j is a standard exponential
+  # to iid exponentials
+  # for the result returned the first element corresponds to exponential jump of the min aY + b
+  # the last element corresponds to the exponential jump of the max aY+b
+
+  # if a is NULL it is treated as a vector of 1s
+
+  if(is.null(a) & is.null(b)){
+    # do standard renyi transformation and exit
+    ox <- order(x)
+    x <- x[ox]
+    return(list("exps" = c(x[1],diff(x)) * seq.int(length(x),1),
+           "order" = ox))
+  }
+
+  if(is.null(b)){
+    b <- double(length(x))
+  }
+
+  p <- length(x)
+  if(p == 1){return(list("exps" = if(is.null(a)){x-b}else{(x-b)/a},
+                         "order" = 1L))}
+
+  # the algorithm below assumes that min(b) = 0, so we shift all of the exponentials
+  # so that the first baseline (knot) is at zero
+  min_b <- min(b)
+  x <- x - min_b
+  b <- b - min_b
+
+  if(!is.null(a)){
+    a_inv <- 1/a
+  }
+
+  ox <- order(x)
+  ob <- order(b)
+
+  std_expos <- rep(0,p)
+
+  z <- x[ox[1]] # current distance FROM current_baseline (current_baseline initialized at 0)
+  running_log_sum <- 0
+
+  j <- 0 # current number of order statistics x we've already PASSED (currently working on the j+1th order statistic)
+  k <- 0 # current number of baselines we've already PASSED
+
+  current_expo_ind <- rep(FALSE,p) # start from none
+  next_baseline <- b[ob[1]] # FROM current_baseline (current_baseline initialized at 0), so next_baseline is initialized at min(b) = the first potential point
+
+  sum_current_expo_ind <- 0
+
+  while(is.finite(z)){
+    if(z > next_baseline){
+      z <- z - next_baseline
+
+      if(is.null(a)){
+        running_log_sum <- running_log_sum + next_baseline * sum_current_expo_ind
+      } else {
+        running_log_sum <- running_log_sum + next_baseline * sum(a_inv[current_expo_ind])
+      }
+
+      k <- k+1
+
+      #current_expo_ind[ob[k]] <- TRUE
+
+      if(!current_expo_ind[ob[k]]){
+        current_expo_ind[ob[k]] <- TRUE
+        sum_current_expo_ind <- sum_current_expo_ind + 1
+      }
+
+      next_baseline <- if(k == p){
+        Inf
+      }else{
+        b[ob[k+1]] - b[ob[k]]
+      }
+
+    } else {
+      # store std_expo
+      if(is.null(a)){
+        std_expos[j+1L] <- running_log_sum + z * sum_current_expo_ind # desired output (independent standard exponentials)
+      } else {
+        std_expos[j+1L] <- running_log_sum + z * sum(a_inv[current_expo_ind]) # desired output (independent standard exponentials)
+      }
+      running_log_sum <- 0
+
+      next_baseline <- next_baseline - z
+
+      j <- j+1
+
+      #current_expo_ind[ox[j]] <- FALSE
+
+      if(current_expo_ind[ox[j]]){
+        current_expo_ind[ox[j]] <- FALSE
+        sum_current_expo_ind <- sum_current_expo_ind - 1
+      }
+
+
+      z <- if(j == p){
+        Inf
+      } else {
+        x[ox[j+1]] - x[ox[j]]
+      }
+    }
+
+    # if(z==0){
+    #   # find next representable double just above x[ox[j]] and divide by 2
+    #   # and then simulate a uniform as a difference between 0 and that
+    #   x[ox[j]]
+    # }
+
+
+    #if(j == (p-1)){browser()}
+
+  }
+
+  list("exps" = std_expos,
+       "order" = ox)
+}
+
+
+# the generalized_renyi_transform reduces to the classic
+# renyi transform under a=1,b=0
+################################################################
+# p <- 1e3
+# x <- rexp(p)
+# ex <- sort(x)
+# all.equal(generalized_renyi_transform(x)$exps,
+#           c(ex[1],diff(ex)) * seq.int(length(ex),1))
+
+# test the generalized_renyi_transform against a simple case
+# where it's easy to calculate the solution by hand
+################################################################
+
+# all.equal(generalized_renyi_transform(
+#   x = c(6.5,6.8,7.2,8),
+#   b = c(4,5,6,7))$exps,
+#   c(1+2+3*0.5,2*0.3,1*0.2+2*0.2,1*0.8))
+#
+# all.equal(generalized_renyi_transform(
+#   x = c(6.5,6.8,7.2,8),
+#   b = c(4,5,5,7))$exps,
+#   c(1+3*1.5,2*0.3,1*0.2+2*0.2,1*0.8))
+#
+# all.equal(generalized_renyi_transform(
+#   x = c(6.2,6.4,6.6,8),
+#   b = c(4,5,6,7))$exps,
+#   c(1+2*1+3*0.2,2*0.2,1*0.2,1*1))
+#
+# the generalized_renyi_transform handles
+# gaps where there are no more competing expoentials until
+# we hit the next baseline well.
+################################################################
+#generalized_renyi_transform(c(2,10),c(1,1),b = c(0,5))
+
+
+#' Renyi Outlier Test
+#'
+#' A fast, numerically precise outlier test for a vector of exact p-values allowing for prior information
+#'
+#' The about which p-values are outlying and "how much" of an outlier they are expected to be
+#'
+#' @references
+#' Christ, R., Hall, I. and Steinsaltz, D.  (2024) "The Renyi Outlier Test", arXiv Available at: \doi{}.
+#'
+#' @param u a vector of p-values
+#' @param k a rough upper bound on the number of outliers expected to be present in u
+#' @param pi optional vector such that \code{pi[j]} is proportional to the probability that \code{u[j]} is an outlier
+#' @param eta optional vector proportional to how far outlying we expect \code{u[j]} to be given \code{u[j]} is an outlier. More precisely, in the common context where each element of u can be thought of as a p-value for testing whether some coefficient \eqn{\beta} in a linear regression model is zero, we assume \code{eta[j]} is proportional to \eqn{\mathbb{E}\left[\left. \beta_j^2 \right| \beta_j \neq 0\right]}.
+#' @return a list containing three elements
+#' \describe{
+#'   \item{`p_value`}{the p-value returned by the Renyi Outlier Test;}
+#'   \item{`exit_status`}{a character string describing any problems that may have been encountered during evaluation, "default is no problems";}
+#'   \item{`u`}{the vector of p-values used by the outlier test after adjusting the \code{u} provided for \code{pi} and \code{eta}.}
+#' }
+#' @examples
+#' # example code
+#'
+#' p <- 1e4
+#' u <- runif(p)
+#' u[c(53,88,32)] <- 1e-6 # add a few outliers
+#' renyi(u)$p_value # test for outliers without any prior knowledge
+#' renyi(u,pi=c(rep(1,100),rep(10^-3,p-100)))$p_value # test for outliers with prior knowledge
+#' @export
+renyi <- function(u, k = ceiling(0.01*length(u)), pi = rep(1,length(u)), eta = rep(1,length(u))
+){
+
+  if(!is.vector(u) || any(!is.finite(u)) || !all(u>=0) || !all(u <= 1)){
+    stop("u must be a vector, assumed to be independent standard uniform r.v.s, with all entries in [0,1].")
+  }
+
+  if(match(0, u, nomatch = 0L)){
+    warning("u passed to renyi contained at least one 0")
+    return(list("p_value" = 0,
+                "exit_status" = "zero detected in input u, setting output u to all NAs",
+                "u" = rep(NA_real_,length(u))))
+  }
+
+  p <- length(u)
+
+  if(!is.vector(pi) || length(pi) != p || any(!is.finite(pi)) || !all(pi>0) ){
+    stop("pi must be a vector of strictly positive weights proportional to prior probabilities.")
+  }
+
+  if(!is.vector(eta) || length(eta) != p || any(!is.finite(eta)) || !all(eta>0) ){
+    stop("eta must be a vector of strictly positive weights")
+  }
+
+  if(!is.vector(k) || length(k)!=1 || !is.finite(k) || k < 1 || k!=as.integer(k)){
+    stop("k must be a positive integer.")
+  }
+
+  k <- 2^(max(0,ceiling(log2(min(128,k,p)))))
+
+
+  b <- eta * log(pi)
+  rt <- generalized_renyi_transform(-eta * log(u) + b, a = eta, b = b)
+
+  new_u <- exp(-cumsum(rt$exps / seq.int(p,1))) # sorted from largest u to smallest u
+
+  uk_exp <- -stats::pbeta(new_u[p-k+1L],k,p-k+1L,lower.tail = TRUE,log.p = TRUE)
+
+  if(k==1){
+    p_value <- exp(-uk_exp)
+  } else {
+    p_value <- mpse_test(c(rev(utils::tail(rt$exps,k-1L)),uk_exp))
+  }
+
+  new_u[rt$order] <- new_u
+
+  list("p_value" = p_value,
+       "exit_status" = "no problems",
+       "u" = new_u) # the effective independent standard uniforms used in calculating the p-value after adjusting for pi and eta
+}
+
+
+# rd_res <-replicate(5e3,renyi:::mpse_test(rexp(16)))
+# shapiro.test(qnorm(rd_res))
+# t.test(qnorm(rd_res))
+
+# the renyi returns u provided
+# under defaults a=1,b=0.
+################################################################
+
+# p <- 1e3
+# u <- runif(p)
+# res <- renyi(u)
+# all.equal(u,res$u)
+
+
+
+# the renyi returns uniforms that are very close to u provided
+# as we approach the defaults a=1,b=0.
+################################################################
+
+# p <- 1e3
+# u <- runif(p)
+# res <- renyi(u)
+# all.equal(u,res$u)
+#
+# res <- renyi(c(u,runif(p)),pi = c(rep(1,2*p)))
+# all.equal(u,res$u[1:p])
+#
+# res <- renyi(c(u,runif(p)),pi = c(rep(1,p),rep(1e-3,p)))
+# plot(u,2*res$u[1:p])
+# abline(0,1)
+
+
+# the renyi matches rdistill::renyi_test
+# under defaults a=1,b=0.
+################################################################
+
+# p <- 1e3
+# u <- runif(p)
+# res <- renyi(u)
+# all.equal(res$p_value,rdistill::renyi_test(u,k=ceiling(0.01*length(u)))$p_value)
+
+
+# the renyi is calibrated
+################################################################
+#
+# p <- 1e3
+# pi <- runif(p)
+#
+# n_reps <- 5e3
+# res <- data.frame(test_pval = double(n_reps),
+#                   st_pval = double(n_reps),
+#                   tt_pval = double(n_reps))
+#
+# for(i in 1:n_reps){
+#   u <- runif(p)
+#   temp_res <- renyi(u, pi = pi)
+#   res$test_pval[i] <- temp_res$p_value
+#   zz <- qnorm(temp_res$u)
+#   res$st_pval[i] <- shapiro.test(zz)$p.value
+#   res$tt_pval[i] <- t.test(zz)$p.value
+#   print(i)
+# }
+#
+# plot(u,temp_res$u)
+#
+# apply(res,2,function(x){shapiro.test(qnorm(x))$p.value})
+# apply(res,2,function(x){t.test(qnorm(x))$p.value})
+# #
+
+
+
+# Demonstrate how that renyi
+# adjusts the multiple testing burden
+################################################################
+
+# p <- 1e4
+#
+# u <- runif(p)
+# all.equal(u,renyi(u)$u)
+#
+# u <- data.frame("helpful_pi" = runif(p),
+#                 "unhelpful_pi" = runif(p))
+#
+# u$helpful_pi[c(53,88,32)] <- 1e-6
+# u$unhelpful_pi[c(530,880,320)] <- 1e-6
+#
+#
+#
+# xx <- 0:4
+# res <- as.data.frame(matrix(0,length(xx),ncol(u)))
+#
+# for(j in 1:ncol(u)){
+#   for(i in 1:length(xx)){
+#     res[i,j] <- -log10(renyi(u[,j], pi = c(rep(1,100),rep(10^-xx[i],p-100)), k = 4)$p_value)
+#   }
+# }
+#
+# plot(xx, res[,1], ylim=c(0,12),col="darkorange",type="l",las=1,bty="n",ylab="-log10 p-value",xlab="-log10 pi",lwd=3)
+# abline(h=-log10(renyi(u$helpful_pi[1:100], k = 4)$p_value),lty=2,lwd=3)
+# lines(xx, res[,2],col="skyblue",lwd=3)
+
+
+
+
+
+
+
