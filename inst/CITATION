@@ -1,0 +1,11 @@
+bibentry(
+  bibtype  = "misc",
+  title    = "The R\\'enyi Outlier Test",
+  author   = c( person("Ryan", "Christ"),
+                person("Ira", "Hall"),
+                person("David","Steinsaltz")),
+  year     = "2024",
+  eprint   = "arXiv:2411.13542",
+  primaryClass= "stat.ME",
+  url      = "https://arxiv.org/abs/2411.13542"
+)

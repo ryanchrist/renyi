@@ -2,14 +2,25 @@ Package: renyi
 Type: Package
 Title: Renyi Outlier Test
 Version: 1.0.0
+Authors@R: person("Ryan","Christ", role=c("aut","cre"),
+            email = "ryan.christ@yale.edu",
+            comment = c(ORCID="0000-0002-2049-3389"))
 Author: Ryan Christ <ryan.christ@yale.edu>
 Maintainer: Ryan Christ <ryan.christ@yale.edu>
-Description: Fast and numerically stable implementation of the Renyi Outlier Test: tests a vector of uniform random variables (eg: p-values) for outliers while allowing for the incorporation of prior information about which specific variables are likely to be outliers (and by how much).
+Description: renyi implements the Renyi Outlier Test <arXiv:2411.13542>, 
+    an outlier test designed for modern large scale testing applications, especially where prior information available.
+    The test combines a vector of independent uniform p-values into one p-value with power 
+    against alternatives where a small number of p-values are non-null.
+    The test can leverage prior probabilities/weights specifying which variables are likely to be outliers 
+    and prior estimates of effect size. The procedure is fast even when the number 
+    of initial p-values is large (e.g. in the millions) and numerically stable even for very small p-values (e.g. 10^-300).
 License: Apache License (>= 2)
+BugReports: https://github.com/ryanchrist/renyi/issues
+URL: https://ryanchrist.r-universe.dev/renyi, https://github.com/ryanchrist/renyi
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
-Depends: R (>= 2.10)
+Depends: R (>= 3.5.0)
 Imports: 
     stats,
     utils
