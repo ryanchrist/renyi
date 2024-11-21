@@ -6,3 +6,5 @@ against alternatives where a small number of p-values are non-null.
 
 The test can leverage prior probabilities/weights specifying which variables are likely to be outliers and prior estimates of effect size. 
 The procedure is fast even when the number of initial p-values is large (e.g. in the millions) and numerically stable even for very small p-values (e.g. 10^-300).
+
+For documentation and installation, please visit [ryanchrist.r-universe.dev/renyi](https://ryanchrist.r-universe.dev/renyi).
