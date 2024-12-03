@@ -6,11 +6,11 @@
 #' Maps a vector of shifted and scaled independent exponential random variables to a sequence of standard independent exponential random variables based on the gaps (jumps) between the initial random variables
 #'
 #' @references
-#' Christ, R., Hall, I. and Steinsaltz, D.  (2024) "The Renyi Outlier Test", arXiv Available at: \doi{}.
+#' Christ, R., Hall, I. and Steinsaltz, D.  (2024) "The Renyi Outlier Test", \href{https://arxiv.org/abs/2411.13542}{arXiv:2411.13542} . Available at: \doi{10.48550/arXiv.2411.13542}.
 #'
-#' @param x a vector of independent exponential random variables of the form \eqn{X_j = a_j Y_j + b_j} where each \eqn{Y_j} is an independent exponential random variable with rate 1
-#' @param a vector of scale parameters implicit in the construction of \code{x}: \code{a[j]} = \eqn{a_j}
-#' @param b vector of shift parameters implicit in the construction of \code{x}: \code{b[j]} = \eqn{b_j}
+#' @param x a vector of independent exponential random variables of the form \eqn{X_j = \eta_j Y_j + \zeta_j} where each \eqn{X_j} is an independent exponential random variable with rate 1
+#' @param eta vector of scale parameters implicit in the construction of \code{x}: \code{eta[j]} = \eqn{\eta_j}
+#' @param zeta vector of shift parameters implicit in the construction of \code{x}: \code{zeta[j]} = \eqn{\zeta_j}
 #' @return a list containing two elements
 #' \describe{
 #'   \item{`exps`}{a vector of independent standard exponentials where \code{exps[1]} is the exponential jump corresponding to \code{min(x)} and \code{tail(exps,1)} is the exponential jump corresponding to \code{max(x)}.}
@@ -24,15 +24,15 @@
 #' xx <- a*rexp(10)+b
 #' generalized_renyi_transform(xx, a, b)
 #' @export
-generalized_renyi_transform <- function(x, a = NULL, b = NULL){
-  # maps independent exponentials of the form aY + b where each Y_j is a standard exponential
+generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
+  # maps independent exponentials of the form \eta * Y + \zeta where each Y_j is a standard exponential
   # to iid exponentials
-  # for the result returned the first element corresponds to exponential jump of the min aY + b
-  # the last element corresponds to the exponential jump of the max aY+b
+  # for the result returned the first element corresponds to exponential jump of the min \eta * Y + \zeta
+  # the last element corresponds to the exponential jump of the max \eta * Y + \zeta
 
   # if a is NULL it is treated as a vector of 1s
 
-  if(is.null(a) & is.null(b)){
+  if(is.null(eta) & is.null(zeta)){
     # do standard renyi transformation and exit
     ox <- order(x)
     x <- x[ox]
@@ -40,26 +40,26 @@ generalized_renyi_transform <- function(x, a = NULL, b = NULL){
            "order" = ox))
   }
 
-  if(is.null(b)){
-    b <- double(length(x))
+  if(is.null(zeta)){
+    zeta <- double(length(x))
   }
 
   p <- length(x)
-  if(p == 1){return(list("exps" = if(is.null(a)){x-b}else{(x-b)/a},
+  if(p == 1){return(list("exps" = if(is.null(eta)){x-zeta}else{(x-zeta)/eta},
                          "order" = 1L))}
 
-  # the algorithm below assumes that min(b) = 0, so we shift all of the exponentials
+  # the algorithm below assumes that min(zeta) = 0, so we shift all of the exponentials
   # so that the first baseline (knot) is at zero
-  min_b <- min(b)
+  min_b <- min(zeta)
   x <- x - min_b
-  b <- b - min_b
+  zeta <- zeta - min_b
 
-  if(!is.null(a)){
-    a_inv <- 1/a
+  if(!is.null(eta)){
+    eta_inv <- 1/eta
   }
 
   ox <- order(x)
-  ob <- order(b)
+  ob <- order(zeta)
 
   std_expos <- rep(0,p)
 
@@ -70,7 +70,7 @@ generalized_renyi_transform <- function(x, a = NULL, b = NULL){
   k <- 0 # current number of baselines we've already PASSED
 
   current_expo_ind <- rep(FALSE,p) # start from none
-  next_baseline <- b[ob[1]] # FROM current_baseline (current_baseline initialized at 0), so next_baseline is initialized at min(b) = the first potential point
+  next_baseline <- zeta[ob[1]] # FROM current_baseline (current_baseline initialized at 0), so next_baseline is initialized at min(zeta) = the first potential point
 
   sum_current_expo_ind <- 0
 
@@ -78,10 +78,10 @@ generalized_renyi_transform <- function(x, a = NULL, b = NULL){
     if(z > next_baseline){
       z <- z - next_baseline
 
-      if(is.null(a)){
+      if(is.null(eta)){
         running_log_sum <- running_log_sum + next_baseline * sum_current_expo_ind
       } else {
-        running_log_sum <- running_log_sum + next_baseline * sum(a_inv[current_expo_ind])
+        running_log_sum <- running_log_sum + next_baseline * sum(eta_inv[current_expo_ind])
       }
 
       k <- k+1
@@ -96,15 +96,15 @@ generalized_renyi_transform <- function(x, a = NULL, b = NULL){
       next_baseline <- if(k == p){
         Inf
       }else{
-        b[ob[k+1]] - b[ob[k]]
+        zeta[ob[k+1]] - zeta[ob[k]]
       }
 
     } else {
       # store std_expo
-      if(is.null(a)){
+      if(is.null(eta)){
         std_expos[j+1L] <- running_log_sum + z * sum_current_expo_ind # desired output (independent standard exponentials)
       } else {
-        std_expos[j+1L] <- running_log_sum + z * sum(a_inv[current_expo_ind]) # desired output (independent standard exponentials)
+        std_expos[j+1L] <- running_log_sum + z * sum(eta_inv[current_expo_ind]) # desired output (independent standard exponentials)
       }
       running_log_sum <- 0
 
@@ -144,7 +144,7 @@ generalized_renyi_transform <- function(x, a = NULL, b = NULL){
 
 
 # the generalized_renyi_transform reduces to the classic
-# renyi transform under a=1,b=0
+# renyi transform under eta=1,zeta=0
 ################################################################
 # p <- 1e3
 # x <- rexp(p)
@@ -158,24 +158,24 @@ generalized_renyi_transform <- function(x, a = NULL, b = NULL){
 
 # all.equal(generalized_renyi_transform(
 #   x = c(6.5,6.8,7.2,8),
-#   b = c(4,5,6,7))$exps,
+#   zeta = c(4,5,6,7))$exps,
 #   c(1+2+3*0.5,2*0.3,1*0.2+2*0.2,1*0.8))
 #
 # all.equal(generalized_renyi_transform(
 #   x = c(6.5,6.8,7.2,8),
-#   b = c(4,5,5,7))$exps,
+#   zeta = c(4,5,5,7))$exps,
 #   c(1+3*1.5,2*0.3,1*0.2+2*0.2,1*0.8))
 #
 # all.equal(generalized_renyi_transform(
 #   x = c(6.2,6.4,6.6,8),
-#   b = c(4,5,6,7))$exps,
+#   zeta = c(4,5,6,7))$exps,
 #   c(1+2*1+3*0.2,2*0.2,1*0.2,1*1))
 #
 # the generalized_renyi_transform handles
 # gaps where there are no more competing expoentials until
 # we hit the next baseline well.
 ################################################################
-#generalized_renyi_transform(c(2,10),c(1,1),b = c(0,5))
+# generalized_renyi_transform(c(2,10),eta = c(1,1),zeta = c(0,5))
 
 
 #' Renyi Outlier Test
@@ -185,12 +185,14 @@ generalized_renyi_transform <- function(x, a = NULL, b = NULL){
 #' The about which p-values are outlying and "how much" of an outlier they are expected to be
 #'
 #' @references
-#' Christ, R., Hall, I. and Steinsaltz, D.  (2024) "The Renyi Outlier Test", arXiv Available at: \doi{}.
+#' Christ, R., Hall, I. and Steinsaltz, D.  (2024) "The Renyi Outlier Test", \href{https://arxiv.org/abs/2411.13542}{arXiv:2411.13542} . Available at: \doi{10.48550/arXiv.2411.13542}.
 #'
 #' @param u a vector of p-values
 #' @param k a rough upper bound on the number of outliers expected to be present in u
-#' @param pi optional vector such that \code{pi[j]} is proportional to the probability that \code{u[j]} is an outlier
-#' @param eta optional vector proportional to how far outlying we expect \code{u[j]} to be given \code{u[j]} is an outlier. More precisely, in the common context where each element of u can be thought of as a p-value for testing whether some coefficient \eqn{\beta} in a linear regression model is zero, we assume \code{eta[j]} is proportional to \eqn{\mathbb{E}\left[\left. \beta_j^2 \right| \beta_j \neq 0\right]}.
+#' @param pi optional vector such that \code{pi[j]} is proportional to the probability that \code{u[j]} is an outlier. The default, \code{NULL}, corresponds to \code{pi = rep_len(1,length(u))}.
+#' @param eta optional vector proportional to how far outlying we expect \code{u[j]} to be given \code{u[j]} is an outlier.
+#' More precisely, in the common context where each element of u can be thought of as a p-value for testing whether some coefficient \eqn{\beta} in a linear regression model is zero, we assume \code{eta[j]} is proportional to \eqn{\mathbb{E}\left[\left. \beta_j^2 \right| \beta_j \neq 0\right]}.
+#' The default, \code{NULL}, corresponds to \code{eta = rep_len(1,length(u))}.
 #' @return a list containing three elements
 #' \describe{
 #'   \item{`p_value`}{the p-value returned by the Renyi Outlier Test;}
@@ -206,8 +208,7 @@ generalized_renyi_transform <- function(x, a = NULL, b = NULL){
 #' renyi(u)$p_value # test for outliers without any prior knowledge
 #' renyi(u,pi=c(rep(1,100),rep(10^-3,p-100)))$p_value # test for outliers with prior knowledge
 #' @export
-renyi <- function(u, k = ceiling(0.01*length(u)), pi = rep(1,length(u)), eta = rep(1,length(u))
-){
+renyi <- function(u, k = ceiling(0.01*length(u)), pi = NULL, eta = NULL){
 
   if(!is.vector(u) || any(!is.finite(u)) || !all(u>=0) || !all(u <= 1)){
     stop("u must be a vector, assumed to be independent standard uniform r.v.s, with all entries in [0,1].")
@@ -222,23 +223,29 @@ renyi <- function(u, k = ceiling(0.01*length(u)), pi = rep(1,length(u)), eta = r
 
   p <- length(u)
 
-  if(!is.vector(pi) || length(pi) != p || any(!is.finite(pi)) || !all(pi>0) ){
-    stop("pi must be a vector of strictly positive weights proportional to prior probabilities.")
-  }
-
-  if(!is.vector(eta) || length(eta) != p || any(!is.finite(eta)) || !all(eta>0) ){
-    stop("eta must be a vector of strictly positive weights")
-  }
-
   if(!is.vector(k) || length(k)!=1 || !is.finite(k) || k < 1 || k!=as.integer(k)){
     stop("k must be a positive integer.")
   }
 
   k <- 2^(max(0,ceiling(log2(min(128,k,p)))))
 
+  if(!is.null(pi) && (!is.vector(pi) || length(pi) != p || any(!is.finite(pi)) || !all(pi>0) )){
+    stop("when provided, pi must be a vector of strictly positive weights proportional to prior probabilities.")
+  }
 
-  b <- eta * log(pi)
-  rt <- generalized_renyi_transform(-eta * log(u) + b, a = eta, b = b)
+  if(!is.null(eta) && (!is.vector(eta) || length(eta) != p || any(!is.finite(eta)) || !all(eta>0) )){
+    stop("when provided, eta must be a vector of strictly positive weights")
+  }
+
+
+  eta_x <- if(is.null(eta)){-log(u)}else{-eta * log(u)}
+
+  if(is.null(pi)){ # we take pi = 1
+    rt <- generalized_renyi_transform(eta_x, eta = eta)
+  } else {
+    zeta <- if(is.null(eta)){log(pi)}else{eta * log(pi)}
+    rt <- generalized_renyi_transform(eta_x + zeta, eta = eta, zeta = zeta)
+  }
 
   new_u <- exp(-cumsum(rt$exps / seq.int(p,1))) # sorted from largest u to smallest u
 
@@ -263,7 +270,7 @@ renyi <- function(u, k = ceiling(0.01*length(u)), pi = rep(1,length(u)), eta = r
 # t.test(qnorm(rd_res))
 
 # the renyi returns u provided
-# under defaults a=1,b=0.
+# under defaults eta=1,zeta=0.
 ################################################################
 
 # p <- 1e3
@@ -272,9 +279,8 @@ renyi <- function(u, k = ceiling(0.01*length(u)), pi = rep(1,length(u)), eta = r
 # all.equal(u,res$u)
 
 
-
 # the renyi returns uniforms that are very close to u provided
-# as we approach the defaults a=1,b=0.
+# as we approach the defaults eta=1,zeta=0.
 ################################################################
 
 # p <- 1e3
@@ -291,7 +297,7 @@ renyi <- function(u, k = ceiling(0.01*length(u)), pi = rep(1,length(u)), eta = r
 
 
 # the renyi matches rdistill::renyi_test
-# under defaults a=1,b=0.
+# under defaults eta=1,zeta=0.
 ################################################################
 
 # p <- 1e3
@@ -325,6 +331,10 @@ renyi <- function(u, k = ceiling(0.01*length(u)), pi = rep(1,length(u)), eta = r
 #
 # apply(res,2,function(x){shapiro.test(qnorm(x))$p.value})
 # apply(res,2,function(x){t.test(qnorm(x))$p.value})
+#
+# # st_pvalues are not exact p-values -- slightly conservative (subuniform) -- which is fine and why they fail the global test
+# qqnorm(qnorm(res$st_pval))
+# qqline(qnorm(res$st_pval))
 # #
 
 

@@ -4,14 +4,14 @@
 \alias{generalized_renyi_transform}
 \title{Generalized Renyi Transform}
 \usage{
-generalized_renyi_transform(x, a = NULL, b = NULL)
+generalized_renyi_transform(x, eta = NULL, zeta = NULL)
 }
 \arguments{
-\item{x}{a vector of independent exponential random variables of the form \eqn{X_j = a_j Y_j + b_j} where each \eqn{Y_j} is an independent exponential random variable with rate 1}
+\item{x}{a vector of independent exponential random variables of the form \eqn{X_j = \eta_j Y_j + \zeta_j} where each \eqn{X_j} is an independent exponential random variable with rate 1}
 
-\item{a}{vector of scale parameters implicit in the construction of \code{x}: \code{a[j]} = \eqn{a_j}}
+\item{eta}{vector of scale parameters implicit in the construction of \code{x}: \code{eta[j]} = \eqn{\eta_j}}
 
-\item{b}{vector of shift parameters implicit in the construction of \code{x}: \code{b[j]} = \eqn{b_j}}
+\item{zeta}{vector of shift parameters implicit in the construction of \code{x}: \code{zeta[j]} = \eqn{\zeta_j}}
 }
 \value{
 a list containing two elements
@@ -35,5 +35,5 @@ xx <- a*rexp(10)+b
 generalized_renyi_transform(xx, a, b)
 }
 \references{
-Christ, R., Hall, I. and Steinsaltz, D.  (2024) "The Renyi Outlier Test", arXiv Available at: \doi{}.
+Christ, R., Hall, I. and Steinsaltz, D.  (2024) "The Renyi Outlier Test", \href{https://arxiv.org/abs/2411.13542}{arXiv:2411.13542} . Available at: \doi{10.48550/arXiv.2411.13542}.
 }
