@@ -197,6 +197,7 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
 #' \describe{
 #'   \item{`p_value`}{the p-value returned by the Renyi Outlier Test;}
 #'   \item{`max_k`}{a power of 2 in 2^(0:\code{k}) denoting the number of tail p-values that yielded the most significant signal when running the Renyi Outlier Test;}
+#'   \item{`p_value_k1`}{the p-value that would be returned by the Renyi Outlier Test assuming \code{k}=1;}
 #'   \item{`exit_status`}{a character string describing any problems that may have been encountered during evaluation, "default is no problems";}
 #'   \item{`u`}{the vector of p-values used by the outlier test after adjusting the \code{u} provided for \code{pi} and \code{eta}.}
 #' }
@@ -255,16 +256,19 @@ renyi <- function(u, k = ceiling(0.01*length(u)), pi = NULL, eta = NULL){
   if(k==1){
     p_value <- exp(-uk_exp)
     max_k <- 1
+    p_value_k1  <- p_value
   } else {
     p_value <- mpse_test(c(rev(utils::tail(rt$exps,k-1L)),uk_exp))
     max_k <- attr(p_value,"max_k")
     attributes(p_value) <- NULL
+    p_value_k1 <- exp(stats::pbeta(new_u[p],1,p,lower.tail = TRUE,log.p = TRUE))
   }
 
   new_u[rt$order] <- new_u
 
   list("p_value" = p_value,
        "max_k" = max_k,
+       "p_value_k1" = p_value_k1,
        "exit_status" = "no problems",
        "u" = new_u) # the effective independent standard uniforms used in calculating the p-value after adjusting for pi and eta
 }
