@@ -21,6 +21,7 @@ The default, \code{NULL}, corresponds to \code{eta = rep_len(1,length(u))}.}
 a list containing three elements
 \describe{
   \item{`p_value`}{the p-value returned by the Renyi Outlier Test;}
+  \item{`max_k`}{a power of 2 in 2^(0:\code{k}) denoting the number of tail p-values that yielded the most significant signal when running the Renyi Outlier Test;}
   \item{`exit_status`}{a character string describing any problems that may have been encountered during evaluation, "default is no problems";}
   \item{`u`}{the vector of p-values used by the outlier test after adjusting the \code{u} provided for \code{pi} and \code{eta}.}
 }

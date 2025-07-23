@@ -121,11 +121,17 @@ mpse_test <- function(x){
   y <- cumsum(x)[2^(0:log2(length(x)))]
 
   tm <- 0
+  max_k <- 1
   for(i in 0:log2(length(x))){
-    tm <- max(tm,-stats::pgamma(y[i+1],2^i,lower.tail = FALSE,log.p = TRUE))
+    new_value <- -stats::pgamma(y[i+1],2^i,lower.tail = FALSE,log.p = TRUE)
+    max_idx <- which.max(c(tm, new_value))
+    if(max_idx==2){
+      tm <- new_value
+      max_k <- 2^i
+    }
   }
 
-  switch(as.character(length(x)),
+  p_value <- switch(as.character(length(x)),
          "2"   = mpset_cdf_2(tm, lower.tail = FALSE),
          "4"   = mpset_cdf_4(tm, lower.tail = FALSE),
          "8"   = mpset_cdf_8(tm, lower.tail = FALSE),
@@ -133,12 +139,24 @@ mpse_test <- function(x){
          "32"  = mpset_cdf_32(tm, lower.tail = FALSE),
          "64"  = mpset_cdf_64(tm, lower.tail = FALSE),
          "128" = mpset_cdf_128(tm, lower.tail = FALSE))
+
+  attr(p_value,"max_k") <- max_k
+
+  p_value
 }
+
+
+
+# mks <- replicate(5e3,attr(renyi:::mpse_test(rexp(128)),"max_k"))
 #
-# ans <- replicate(5e3,mpse.test(rexp(4)))
+# barplot(table(mks))
+#
+#
+# ans <- replicate(5e3,renyi:::mpse_test(rexp(4)))
 #
 # qqnorm(qnorm(ans));abline(0,1)
 # shapiro.test(qnorm(ans))
+#
 #
 # ans <- rep(0,1e4)
 # for(i in 1:length(ans)){

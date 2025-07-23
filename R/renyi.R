@@ -196,6 +196,7 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
 #' @return a list containing three elements
 #' \describe{
 #'   \item{`p_value`}{the p-value returned by the Renyi Outlier Test;}
+#'   \item{`max_k`}{a power of 2 in 2^(0:\code{k}) denoting the number of tail p-values that yielded the most significant signal when running the Renyi Outlier Test;}
 #'   \item{`exit_status`}{a character string describing any problems that may have been encountered during evaluation, "default is no problems";}
 #'   \item{`u`}{the vector of p-values used by the outlier test after adjusting the \code{u} provided for \code{pi} and \code{eta}.}
 #' }
@@ -253,21 +254,31 @@ renyi <- function(u, k = ceiling(0.01*length(u)), pi = NULL, eta = NULL){
 
   if(k==1){
     p_value <- exp(-uk_exp)
+    max_k <- 1
   } else {
     p_value <- mpse_test(c(rev(utils::tail(rt$exps,k-1L)),uk_exp))
+    max_k <- attr(p_value,"max_k")
+    attributes(p_value) <- NULL
   }
 
   new_u[rt$order] <- new_u
 
   list("p_value" = p_value,
+       "max_k" = max_k,
        "exit_status" = "no problems",
        "u" = new_u) # the effective independent standard uniforms used in calculating the p-value after adjusting for pi and eta
 }
 
 
+# Demonstrate list elements returned by renyi
+################################################################
+# renyi(runif(1e3),k = 32)
+
+
 # rd_res <-replicate(5e3,renyi:::mpse_test(rexp(16)))
 # shapiro.test(qnorm(rd_res))
 # t.test(qnorm(rd_res))
+
 
 # the renyi returns u provided
 # under defaults eta=1,zeta=0.
@@ -368,6 +379,7 @@ renyi <- function(u, k = ceiling(0.01*length(u)), pi = NULL, eta = NULL){
 # plot(xx, res[,1], ylim=c(0,12),col="darkorange",type="l",las=1,bty="n",ylab="-log10 p-value",xlab="-log10 pi",lwd=3)
 # abline(h=-log10(renyi(u$helpful_pi[1:100], k = 4)$p_value),lty=2,lwd=3)
 # lines(xx, res[,2],col="skyblue",lwd=3)
+
 
 
 
