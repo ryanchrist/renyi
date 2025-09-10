@@ -37,7 +37,7 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
     ox <- order(x)
     x <- x[ox]
     return(list("exps" = c(x[1],diff(x)) * seq.int(length(x),1),
-           "order" = ox))
+                "order" = ox))
   }
 
   if(is.null(zeta)){
@@ -61,7 +61,7 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
   ox <- order(x)
   ob <- order(zeta)
 
-  std_expos <- rep(0,p)
+  std_expos <- double(p)
 
   z <- x[ox[1]] # current distance FROM current_baseline (current_baseline initialized at 0)
   running_log_sum <- 0
@@ -69,10 +69,11 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
   j <- 0 # current number of order statistics x we've already PASSED (currently working on the j+1th order statistic)
   k <- 0 # current number of baselines we've already PASSED
 
-  current_expo_ind <- rep(FALSE,p) # start from none
+  current_expo_ind <- logical(p) # start from none
   next_baseline <- zeta[ob[1]] # FROM current_baseline (current_baseline initialized at 0), so next_baseline is initialized at min(zeta) = the first potential point
 
   sum_current_expo_ind <- 0
+  sum_current_eta_inv <- 0
 
   while(is.finite(z)){
     if(z > next_baseline){
@@ -81,7 +82,7 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
       if(is.null(eta)){
         running_log_sum <- running_log_sum + next_baseline * sum_current_expo_ind
       } else {
-        running_log_sum <- running_log_sum + next_baseline * sum(eta_inv[current_expo_ind])
+        running_log_sum <- running_log_sum + next_baseline * sum_current_eta_inv
       }
 
       k <- k+1
@@ -91,6 +92,9 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
       if(!current_expo_ind[ob[k]]){
         current_expo_ind[ob[k]] <- TRUE
         sum_current_expo_ind <- sum_current_expo_ind + 1
+        if(!is.null(eta)){
+          sum_current_eta_inv <- sum_current_eta_inv + eta_inv[ob[k]]
+        }
       }
 
       next_baseline <- if(k == p){
@@ -104,7 +108,7 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
       if(is.null(eta)){
         std_expos[j+1L] <- running_log_sum + z * sum_current_expo_ind # desired output (independent standard exponentials)
       } else {
-        std_expos[j+1L] <- running_log_sum + z * sum(eta_inv[current_expo_ind]) # desired output (independent standard exponentials)
+        std_expos[j+1L] <- running_log_sum + z * sum_current_eta_inv # desired output (independent standard exponentials)
       }
       running_log_sum <- 0
 
@@ -117,6 +121,9 @@ generalized_renyi_transform <- function(x, eta = NULL, zeta = NULL){
       if(current_expo_ind[ox[j]]){
         current_expo_ind[ox[j]] <- FALSE
         sum_current_expo_ind <- sum_current_expo_ind - 1
+        if(!is.null(eta)){
+          sum_current_eta_inv <- sum_current_eta_inv - eta_inv[ox[j]]
+        }
       }
 
 
