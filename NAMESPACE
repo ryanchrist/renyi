@@ -2,3 +2,4 @@
 
 export(generalized_renyi_transform)
 export(renyi)
+export(uniformity_tests)
